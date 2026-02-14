@@ -1,39 +1,41 @@
-# Flask AD Manager (Active Directory Web Portal)
+# AD-Manager
 
-一個基於 Python Flask 與 LDAP3 的輕量級 Active Directory Web 管理介面。
-專為資訊管理人員設計，解決了傳統 ADUC (Active Directory Users and Computers) 無法跨平台操作的痛點，並整合了 DNS 紀錄管理功能。
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docker Ready](https://img.shields.io/badge/docker-ready-2496ed.svg)](https://www.docker.com/)
 
-## 🚀 主要功能 (Features)
+**AD-Manager** 是一款專為 IT 管理員設計的輕量級網域管理入口網站。無需安裝 RSAT 或編寫複雜的 PowerShell 腳本，透過瀏覽器即可輕鬆執行日常 Active Directory 管理任務。
 
-* **使用者管理 (User Management)**
-    * 檢視使用者狀態 (啟用/停用)
-    * 新增使用者 (自動產生 UPN)
-    * **重置密碼** (具備權限委派邏輯)
-    * 刪除使用者
-* **群組管理 (Group Management)**
-    * 檢視群組成員
-    * 新增/移除群組成員
-* **電腦管理 (Computer Management)**
-    * 支援指定 **OU (Organizational Unit)** 放置邏輯
-    * 自動補全 `dNSHostName` 與 `servicePrincipalName` (解決 ADUC 顯示異常問題)
-* **DNS 管理 (AD-Integrated DNS)**
-    * **技術亮點**：直接透過 LDAP 操作 `dnsRecord` 屬性，無需 PowerShell 或 WinRM。
-    * 支援 **A Record** 與 **CNAME Record** 新增/刪除。
-    * 實作微軟 DNS 二進位封包結構 (MS-DNSP) 封裝與解析。
-* **安全性 (Security)**
-    * Flask-Login 登入驗證
-    * CSRF 防護 (Flask-WTF)
-    * 敏感資料隔離 (.env)
+**AD-Manager** is a lightweight web portal for Active Directory management. It enables IT administrators to perform daily AD tasks through a browser without RSAT or complex PowerShell scripts.
 
-## 🛠️ 使用工具 (Tools)
 
-* **Backend**: Python 3.9+, Flask, LDAP3
-* **Frontend**: Bootstrap 5, Jinja2
-* **Infrastructure**: Docker, Docker Compose
 
-## ⚙️ 安裝與執行 (Installation)
+---
 
-### 1. Clone 專案
+## ✨ 核心功能 | Key Features
+
+* **密碼管理 (Password Management)**: 支援管理員權限委派，快速重置使用者密碼。
+* **物件維護 (Object Management)**: 輕鬆管理使用者、群組及電腦物件，支援指定 **OU (組織單位)** 部署，符合企業權限管理規範。
+* **DNS 引擎 (DNS Engine)**: 內建 **MS-DNSP** 協定實作，直接透過 LDAP 新增或刪除 A 與 CNAME 紀錄，無需依賴 WinRM 或 PowerShell。
+* **自動化配置 (Auto-Provisioning)**: 自動補全電腦物件的 SPN 與 DNS 屬性，確保系統相容性。
+
+---
+
+## 🔒 資安設計 | Security
+
+本專案遵循 **深度防禦 (Defense-in-Depth)** 原則開發，確保管理過程的安全與合規：
+* **權限委派**: 支援以「當前登入者」身分執行連線，確保操作符合 AD 權限控管邏輯。
+* **防護機制**: 全站啟用 CSRF 防護與 LDAP 注入過濾 (Injection Prevention)。
+* **憑證安全**: 採用 Server-Side Session 儲存，敏感資料不留存於客戶端 Cookie。
+
+---
+
+## 🚀 快速上手 | Getting Started
+
+### 1. 啟動服務
+確保您的環境已安裝 Docker 與 Docker Compose，執行以下指令：
+
 ```bash
-git clone [https://github.com/kd992102/ad-manager.git](https://github.com/kd992102/ad-manager.git)
+git clone [https://github.com/your-username/ad-manager.git](https://github.com/your-username/ad-manager.git)
 cd ad-manager
+docker compose up -d --build
