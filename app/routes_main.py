@@ -9,8 +9,6 @@ def index():
     ad_server = current_app.config.get('AD_SERVER')
     
     # 2. 如果沒有設定 -> 導向初始化精靈
-    if not ad_server:
-        return redirect(url_for('setup.index'))
         
     # 3. 如果有設定 -> 導向 Dashboard (會觸發 Login 驗證)
-    return redirect(url_for('dashboard.index'))
+    return redirect(url_for('auth.login'))
