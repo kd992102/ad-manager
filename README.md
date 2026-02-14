@@ -1,10 +1,7 @@
 # Flask AD Manager (Active Directory Web Portal)
 
 一個基於 Python Flask 與 LDAP3 的輕量級 Active Directory Web 管理介面。
-專為 IT 管理員設計，解決了傳統 ADUC (Active Directory Users and Computers) 無法跨平台操作的痛點，並整合了 DNS 紀錄管理功能。
-
-![Dashboard Screenshot](https://via.placeholder.com/800x400?text=Dashboard+Screenshot+Here)
-*(建議：這裡放一張你 Dashboard 的截圖)*
+專為資訊管理人員設計，解決了傳統 ADUC (Active Directory Users and Computers) 無法跨平台操作的痛點，並整合了 DNS 紀錄管理功能。
 
 ## 🚀 主要功能 (Features)
 
@@ -28,7 +25,7 @@
     * CSRF 防護 (Flask-WTF)
     * 敏感資料隔離 (.env)
 
-## 🛠️ 技術棧 (Tech Stack)
+## 🛠️ 使用工具 (Tools)
 
 * **Backend**: Python 3.9+, Flask, LDAP3
 * **Frontend**: Bootstrap 5, Jinja2
@@ -38,5 +35,5 @@
 
 ### 1. Clone 專案
 ```bash
-git clone [https://github.com/your-username/ad-manager.git](https://github.com/your-username/ad-manager.git)
+git clone [https://github.com/kd992102/ad-manager.git](https://github.com/kd992102/ad-manager.git)
 cd ad-manager
