@@ -11,8 +11,8 @@ load_dotenv()
 # 初始化 LoginManager
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
-login_manager.login_message = "請先登入以存取此頁面。"
-login_manager.login_message_category = "warning"
+#login_manager.login_message = "請先登入以存取此頁面。"
+#login_manager.login_message_category = "warning"
 
 # 初始化 CSRF 保護
 csrf = CSRFProtect() # <--- 【關鍵修正 2】建立全域物件
@@ -46,10 +46,6 @@ def create_app():
 
     from app.routes_auth import auth_bp
     app.register_blueprint(auth_bp)
-
-    # 【新增】註冊 Setup 路由
-    from app.routes_setup import bp as setup_bp
-    app.register_blueprint(setup_bp)
 
     try:
         from app.routes_main import bp as main_bp
