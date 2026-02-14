@@ -1,0 +1,6 @@
+Flask
+ldap3
+Flask-Login
+Flask-Session
+Flask-WTF
+python-dotenv

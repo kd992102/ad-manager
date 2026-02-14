@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  ad-app:
+    build: .
+    container_name: ad-manager
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-5000}:5000"
+    volumes:
+      # 將主機的 data 資料夾掛載進容器，確保 config.json 與憑證持久化
+      - ./data:/app/data
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1

@@ -1,0 +1,6 @@
+{
+    "AD_SERVER": "ldaps://armytest.army.mil.tw",
+    "AD_BASEDN": "ou=aceitc,dc=army,dc=mil,dc=tw",
+    "AD_USER": "admin@army.mil.tw",
+    "AD_PASS": "1qaz+2wsx"
+}
