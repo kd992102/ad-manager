@@ -7,6 +7,7 @@ import ssl
 import sys
 from ldap3.utils.conv import escape_filter_chars
 from flask import current_app, session # <--- 引入 session
+from ldap3.utils.conv import escape_filter_chars
 
 def log(msg):
     # 寫入 stderr 而不是 stdout，確保 Docker logs 看得到
@@ -434,27 +435,29 @@ def create_computer(computer_name):
     
 def verify_ad_login(username, password):
     """
-    驗證使用者帳號密碼是否正確 (用於登入頁面)
+    驗證登入並強制執行授權檢查
     """
     server_addr = current_app.config.get('AD_SERVER')
-    base_dn = current_app.config.get('AD_BASEDN')
-    domain = current_app.config.get('AD_DOMAIN') # 例如 army.mil.tw
+    domain = current_app.config.get('AD_DOMAIN')
     
-    # 組合 UPN (User Principal Name)
-    if '@' not in username:
-        user_upn = f"{username}@{domain}"
-    else:
-        user_upn = username
+    user_upn = f"{username}@{domain}" if '@' not in username else username
 
     try:
-        # 嘗試用該帳號密碼建立連線
+        # 1. 身份驗證 (Authentication)
         server = Server(server_addr, use_ssl=True, tls=None, get_info=NONE)
         conn = Connection(server, user=user_upn, password=password, authentication='SIMPLE', auto_bind=True)
         
-        # 如果 auto_bind 成功，代表密碼正確
         if conn.bound:
-            conn.unbind()
-            return True, "登入成功"
+            # 2. 授權檢查 (Authorization)
+            # 確保只有具備管理權限的人能進入系統
+            if is_domain_admin(conn, username):
+                conn.unbind()
+                return True, "登入成功"
+            else:
+                conn.unbind()
+                log(f"拒絕登入：使用者 {username} 權限不足")
+                return False, "權限不足：您不具備 Domain Admins 權限"
+                
     except Exception as e:
         return False, f"登入失敗: {str(e)}"
     
@@ -480,3 +483,62 @@ def reset_user_password(username, new_password):
         return True, "密碼重置成功"
     except Exception as e:
         return False, f"重置失敗: {str(e)}"
+    
+def is_domain_admin(conn, username):
+    """
+    專業授權服務：使用 entry_dn 避開屬性遺失錯誤
+    """
+    base_dn = current_app.config.get('AD_BASEDN')
+    
+    # 1. 動態解析網域根目錄
+    if 'dc=' in base_dn.lower():
+        domain_root = base_dn[base_dn.lower().find('dc='):]
+    else:
+        domain_root = base_dn
+
+    log(f"權限檢查啟動 | 使用者: {username} | 根目錄: {domain_root}")
+
+    # 2. 搜尋 Domain Admins 群組 (利用 RID 512)
+    # 我們不要求特定的 attributes，改用 entry_dn 獲取結果
+    conn.search(
+        search_base=domain_root,
+        search_filter='(&(objectClass=group)(primaryGroupToken=512))',
+        attributes=['cn'] # 隨便抓個屬性確保 Entry 被建立
+    )
+    
+    if not conn.entries:
+        log("RID 512 搜尋失敗，嘗試 sAMAccountName 搜尋...")
+        conn.search(
+            search_base=domain_root, 
+            search_filter='(&(objectClass=group)(sAMAccountName=Domain Admins))',
+            attributes=['cn']
+        )
+
+    if not conn.entries:
+        log("嚴重錯誤：無法在網域中定位 Domain Admins 群組。")
+        return False
+    
+    # 【關鍵修正】使用 entry_dn 替代 distinguishedName
+    admin_dn = conn.entries[0].entry_dn
+    log(f"成功識別管理員群組 DN: {admin_dn}")
+
+    # 3. 執行權限判定
+    safe_user = escape_filter_chars(username)
+    
+    # 檢查 A: 主要群組 ID
+    conn.search(search_base=domain_root, search_filter=f'(sAMAccountName={safe_user})', attributes=['primaryGroupID'])
+    
+    user_primary_id = ""
+    if conn.entries and 'primaryGroupID' in conn.entries[0]:
+        user_primary_id = str(conn.entries[0].primaryGroupID.value)
+    
+    # 檢查 B: 遞迴成員身份 (Matching Rule In Chain)
+    recursive_filter = f"(&(sAMAccountName={safe_user})(memberOf:1.2.840.113556.1.4.1941:={admin_dn}))"
+    conn.search(search_base=domain_root, search_filter=recursive_filter, attributes=['cn'])
+    
+    is_admin = (user_primary_id == "512") or (len(conn.entries) > 0)
+    
+    if not is_admin:
+        log(f"拒絕授權：使用者 {username} 不在管理員名單中。")
+        
+    return is_admin

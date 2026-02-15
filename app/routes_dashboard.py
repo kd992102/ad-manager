@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
+from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app, session
 # 引入 ad_ops 所有功能 (包含我們剛修好的 DNS 功能)
 from app.ad_ops import *
 from flask_login import login_required  # <--- 必須有這一行
@@ -6,16 +6,19 @@ from flask_login import login_required  # <--- 必須有這一行
 bp = Blueprint('dashboard', __name__, url_prefix='/dashboard')
 
 @bp.route('/')
-@login_required # <--- 2. 這裡一定要加！這就是「鎖頭
+@login_required
 def index():
-    # 1. 取得選擇的參數 (群組 or DNS區域)
-    selected_group_name = request.args.get('selected_group')
-    selected_zone_dn = request.args.get('selected_zone') # <--- [新增] 接收 DNS 區域參數
+    # 改從 session 讀取，URL 參數僅作為 fallback (可視需求移除)
+    selected_group_name = session.get('selected_group')
+    selected_zone_dn = session.get('selected_zone')
     
     # 初始化變數
     group_members = []
     dns_records = []  # <--- [新增]
     users, groups, computers, zones = [], [], [], [] # <--- [新增] zones 初始化
+
+    #group_members = get_group_members_with_details(selected_group_name) if selected_group_name else []
+    #dns_records = get_dns_records(selected_zone_dn) if selected_zone_dn else []
 
     try:
         # 讀取基本資料
@@ -39,14 +42,14 @@ def index():
         
     # 4. 把資料傳給前端
     return render_template('dashboard.html', 
-                           users=users, 
-                           groups=groups, 
-                           computers=computers,
-                           zones=zones,           # <--- [關鍵修正] 把區域列表傳給 HTML
-                           selected_group=selected_group_name,
-                           group_members=group_members,
-                           selected_zone=selected_zone_dn, # <--- [新增] 傳回選取的區域 DN
-                           dns_records=dns_records)        # <--- [新增] 傳回紀錄列表
+                            users=users, 
+                            groups=groups, 
+                            computers=computers,
+                            zones=zones,
+                            group_members=group_members,
+                            selected_group=selected_group_name,
+                            selected_zone=selected_zone_dn,
+                            dns_records=dns_records)
 
 # --- 使用者操作 ---
 @bp.route('/user/add', methods=['POST'])
@@ -108,8 +111,10 @@ def add_dns_record():
     
     success, msg = create_dns_record(zone_dn, hostname, record_type, value)
     flash(msg, "success" if success else "danger")
+
+    session['selected_zone'] = zone_dn
     # 導向回該 DNS 區域並切換到 #dns 分頁
-    return redirect(url_for('dashboard.index', selected_zone=zone_dn) + '#dns')
+    return redirect(url_for('dashboard.index') + '#dns')
 
 # [新增] 刪除 DNS 紀錄路由 (原本漏掉了)
 @bp.route('/dns/delete', methods=['POST'])
@@ -119,7 +124,9 @@ def delete_dns():
     
     success, msg = delete_dns_record(record_dn)
     flash(msg, "success" if success else "danger")
-    return redirect(url_for('dashboard.index', selected_zone=zone_dn) + '#dns')
+    session['selected_zone'] = zone_dn
+
+    return redirect(url_for('dashboard.index') + '#dns')
 
 @bp.route('/user/reset_password', methods=['POST'])
 @login_required # 確保只有登入者能操作
@@ -130,3 +137,22 @@ def reset_password():
     success, msg = reset_user_password(username, new_password)
     flash(msg, "success" if success else "danger")
     return redirect(url_for('dashboard.index'))
+
+@bp.route('/select', methods=['POST'])
+@login_required
+def select_item():
+    """處理群組或 DNS 區域選擇的隱藏 POST 請求"""
+    item_type = request.form.get('type')  # 前端傳來 'group' 或 'zone'
+    value = request.form.get('value')
+    
+    target_tab = "users" # 預設值
+    
+    if item_type == 'group':
+        session['selected_group'] = value
+        target_tab = "groups" # 對應 id="groups"
+    elif item_type == 'zone':
+        session['selected_zone'] = value
+        # 【關鍵修正】這裡不能用 item_type + 's' (zones)，必須改成 HTML 裡的 id (dns)
+        target_tab = "dns" 
+        
+    return redirect(url_for('dashboard.index') + f"#{target_tab}")
